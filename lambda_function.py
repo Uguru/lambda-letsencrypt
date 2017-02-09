@@ -470,6 +470,7 @@ def configure_cloudfront(domain, s3bucket):
             'DomainName': '{}.s3.amazonaws.com'.format(s3bucket),
             'Id': 'lambda-letsencrypt-challenges',
             'OriginPath': "/{}".format(domain['CLOUDFRONT_ID']),
+            'CustomHeaders': {u'Quantity': 0},
             'S3OriginConfig': {u'OriginAccessIdentity': ''}
         })
 
@@ -493,10 +494,12 @@ def configure_cloudfront(domain, s3bucket):
             'ForwardedValues': {
                 u'Cookies': {u'Forward': 'none'},
                 'Headers': {'Quantity': 0},
-                'QueryString': False
+                'QueryString': False,
+                'QueryStringCacheKeys': {'Quantity': 0}
             },
             'MaxTTL': 31536000,
             'MinTTL': 0,
+            'LambdaFunctionAssociations': { 'Quantity': 0 },
             'PathPattern': '/.well-known/acme-challenge/*',
             'SmoothStreaming': False,
             'TargetOriginId': 'lambda-letsencrypt-challenges',
@@ -508,11 +511,11 @@ def configure_cloudfront(domain, s3bucket):
         cf_config['DistributionConfig']['CacheBehaviors']['Quantity'] = quantity + 1
 
     # make sure we use SNI and not dedicated IP($600/month)
-    #ssl_method = cf_config['DistributionConfig']['ViewerCertificate'].get('SSLSupportMethod', None)
-    #if ssl_method != 'sni-only':
-    #    changed = True
-    #    cf_config['DistributionConfig']['ViewerCertificate']['MinimumProtocolVersion'] = 'TLSv1'
-    #    cf_config['DistributionConfig']['ViewerCertificate']['SSLSupportMethod'] = 'sni-only'
+    ssl_method = cf_config['DistributionConfig']['ViewerCertificate'].get('SSLSupportMethod', None)
+    if ssl_method != 'sni-only':
+        changed = True
+        cf_config['DistributionConfig']['ViewerCertificate']['MinimumProtocolVersion'] = 'TLSv1'
+        cf_config['DistributionConfig']['ViewerCertificate']['SSLSupportMethod'] = 'sni-only'
 
     if changed:
         logger.info("Updating cloudfront distribution with additional origin for challenges")
